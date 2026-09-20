@@ -199,9 +199,9 @@ function balloonFor(b: Bubble, where: string): string {
 
 function storyBoxFor(text: string, where: string): string {
   return (
-    `${where} place one clean rectangular Korean webtoon narration box with a white interior, thin black border, ` +
+    `${where} place one clean solid black rectangular Korean webtoon narration box with a crisp white border, ` +
     `generous inner spacing and no pointer tail, positioned over quiet negative space without covering a face or action, ` +
-    `containing ONLY this exact English story text, spelled exactly, in clear upright black comic lettering: "${text}"`
+    `containing ONLY this exact English story text, spelled exactly, in clear upright bold white comic lettering: "${text}"`
   );
 }
 

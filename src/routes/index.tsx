@@ -1479,8 +1479,8 @@ function Index() {
                   rows={6}
                   spellCheck={false}
                   placeholder={
-                    "One line per character — Name: gender, age, hair, eyes, skin, build, exact clothing with colours.\n" +
-                    "Ravi: male, 17-year-old boy, messy jet-black hair, dark brown eyes, tan skin, thin build, faded grey school shirt, navy trousers\n" +
+                    "One line per character — Name: hair, eyes, skin, build, exact clothing with colours. Add age or gender only if your story specifies it.\n" +
+                    "Ravi: messy jet-black hair, dark brown eyes, tan skin, thin build, faded grey school shirt, navy trousers\n" +
                     "Place - Ravi's home: small brick village house, blue wooden door, clay-tiled roof, neem tree in the yard"
                   }
                   className="mt-3 w-full resize-y border-2 border-foreground bg-background p-3 font-mono text-xs outline-none focus:ring-4 focus:ring-ring"
