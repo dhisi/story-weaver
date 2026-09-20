@@ -2,7 +2,7 @@
  * The only text engine in this app: Z.ai GLM (OpenAI-compatible API).
  *
  * Rules baked in here:
- *  - ONE model only (`ZAI_MODEL`, default `glm-4.7-flash` — the newest,
+ *  - ONE model only (`ZAI_MODEL`, default `glm-4.5-flash` — the newest,
  *    strongest free Z.ai text model as of September 2026).
  *  - Requests are queued: one call in flight at a time, with a small gap so
  *    the account's rate limit is never raced.
@@ -16,7 +16,7 @@ const API = "https://api.z.ai/api/paas/v4/chat/completions";
 
 /**
  * Free Z.ai text model. `glm-4.5-flash` is used exclusively: the reasoning
- * model `glm-4.7-flash` burns its budget on hidden thinking and returns
+ * model `glm-4.5-flash` burns its budget on hidden thinking and returns
  * degenerate answers (it echoes the input script instead of writing prompts).
  */
 export function modelChain(): string[] {
