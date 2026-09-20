@@ -175,7 +175,7 @@ export async function buildCharacterBible(script: string): Promise<string> {
   const system =
     "You are a character continuity editor. Read the WHOLE script (it may be " +
     "Hinglish/Hindi) and list the recurring characters. For each, give ONE compact English line of FIXED, highly " +
-    "specific visual traits usable verbatim inside an image prompt: age, gender, exact hair colour + length + style, " +
+    "specific visual traits usable verbatim inside an image prompt: exact hair colour + length + style, " +
     "eye colour, skin tone, face shape, one distinguishing feature (scar, mole, glasses, bandage), build/height, and " +
     "signature clothing WITH exact colours. Be concrete — these traits must let an artist redraw the same person " +
     "hundreds of times identically. 16-28 words per character. Max 10 characters. " +
@@ -183,17 +183,9 @@ export async function buildCharacterBible(script: string): Promise<string> {
     "fixed visual details (materials, colours, key furniture/landmarks, time of day if fixed) so the same place is " +
     "drawn identically every time it appears, e.g. 'Place - Henan's home: small brick village house, blue wooden " +
     "door, clay-tiled roof, neem tree in the yard, string cot outside'. " +
-    "CRITICAL: determine each character's gender from the script (names, pronouns, relationships like brother/sister) " +
-    "and make the gender the FIRST and most emphasized trait — write 'male' or 'female' explicitly plus a matching " +
-    "noun (man/woman/boy/girl). Never guess wrong or leave gender ambiguous. " +
-    "CRITICAL: determine each character's AGE from the script (school grade, job, parenthood, being called old/young, " +
-    "family roles like grandfather/mother/child) and state it EXPLICITLY right after the gender: a number " +
-    "('17 years old', '45 years old') or an exact band ('elderly, over 65', 'middle-aged, 40 to 55', 'teenager', " +
-    "'young child'). Never leave age vague or write just 'young'/'old' — write the concrete age. " +
-    "LEAD CHARACTER OVERRIDE (absolute): the story's main protagonist must always be a clearly adult, unmarried " +
-    "23-year-old young man, even if the script is vague or suggests a teenage boy. Put the protagonist FIRST and " +
-    "describe him exactly as 'male, 23-year-old unmarried young man' — never boy, teenager, schoolboy or child. " +
-    "Output plain lines like: Henan: male, 17-year-old Indian boy, messy jet-black hair, dark brown eyes, tan skin, " +
+    "Include age, gender, relationship status or similar identity details ONLY when the script explicitly establishes them; " +
+    "otherwise leave them unspecified and never guess or impose a default. The lead has no special demographic override. " +
+    "Output plain lines like: Henan: messy jet-black hair, dark brown eyes, tan skin, " +
     "thin wiry build, faded grey school shirt with frayed collar, small scar above left eyebrow. " +
     "No headings, no numbering, no extra commentary.";
 
@@ -220,33 +212,11 @@ export async function buildCharacterBible(script: string): Promise<string> {
 }
 
 /**
- * The first character line is the lead. Product direction fixes that person as
- * an adult 23-year-old unmarried man, including user-written sheets, so a model
- * can never reinterpret a vague "young" protagonist as a 14–16-year-old boy.
+ * Character sheets are now authoritative and unrestricted. Kept as a named
+ * boundary for callers and old saved runs, but it deliberately changes nothing.
  */
 export function normalizeLeadCharacter(bible: string): string {
-  const lines = bible.split("\n");
-  const leadIndex = lines.findIndex((line) => {
-    const clean = line.replace(/^[\s\-*•\d.)]+/, "").trim();
-    if (!clean.includes(":")) return false;
-    return !/^(?:place|location|setting)\s*-/i.test(clean);
-  });
-  if (leadIndex < 0) return bible;
-
-  const line = lines[leadIndex] as string;
-  const colon = line.indexOf(":");
-  if (colon < 1) return bible;
-  const name = line.slice(0, colon).trim();
-  let traits = line.slice(colon + 1).trim();
-  traits = traits
-    .replace(/\b(?:male|female)\s*,?\s*/gi, "")
-    .replace(/\b\d{1,2}\s*(?:-|\s)?(?:to|–|-)?\s*\d{0,2}\s*(?:-|\s)?years?[- ]old\s*/gi, "")
-    .replace(/\b(?:teenage[rd]?|adolescent|schoolboy|schoolgirl|boy|girl|child|kid|young woman|woman|man)\b\s*,?\s*/gi, "")
-    .replace(/\b(?:married|unmarried|single|bachelor)\b\s*,?\s*/gi, "")
-    .replace(/^\s*[,;-]+\s*|\s{2,}/g, " ")
-    .trim();
-  lines[leadIndex] = `${name}: male, 23-year-old unmarried young man${traits ? `, ${traits}` : ""}`;
-  return lines.join("\n");
+  return bible;
 }
 
 const PROMPT_SYSTEM =
@@ -269,9 +239,8 @@ const PROMPT_SYSTEM =
   "Dutch angle or dramatic foreshortening according to the action and emotion, " +
   "(6) the natural lighting and colour the line implies.\n" +
   "RULES:\n" +
-  "- LEAD CHARACTER AGE (absolute): the FIRST character in the bible is the main protagonist. He is always a clearly " +
-  "adult, unmarried 23-year-old young man. Repeat that exact age and adult status whenever he appears; never call or " +
-  "depict him as a boy, teenager, schoolboy, child, or 14–16 years old.\n" +
+  "- CHARACTER IDENTITY: never impose an age, gender, relationship status or other demographic on the protagonist or " +
+  "any character. Preserve such details only when the script or user-written character sheet explicitly provides them.\n" +
   "- ONE LINE = ONE IMAGE (absolute): exactly one prompt per requested number, in the same order, never merged, never " +
   "split, never skipped, never a placeholder. Each prompt must be visibly DIFFERENT from its neighbours.\n" +
   "- NOTHING INVENTED (absolute): every person, place, object, prop and event in the prompt must come from the script — " +
@@ -326,23 +295,13 @@ const PROMPT_SYSTEM =
   "- NEVER SUBSTITUTE SCENERY FOR A HUMAN MOMENT: if a line names, quotes, remembers, describes, follows or uses a " +
   "pronoun for a person, that person must be visibly present performing the line's action. An empty room, empty road, " +
   "empty field or landscape is valid only when the line explicitly establishes an unoccupied place.\n" +
-  "- GENDER ACCURACY (critical): every bible character is written with their name AND their exact gender using an " +
-  "explicit gendered noun. Never swap or reverse a character's gender. For side characters, pick one gender from the " +
-  "script context and state it explicitly, and keep it identical everywhere in the story.\n" +
-  "- AGE ACCURACY (critical): every bible character has a fixed age — copy it into every prompt they appear in " +
-  "('a 45-year-old man', 'an elderly woman with deep wrinkles', 'a 7-year-old child'). A character must look the " +
-  "SAME age in every panel: a child is never drawn adult, an old person is never drawn young, a teenager is never " +
-  "drawn middle-aged. Add the visible age markers the bible implies (wrinkles and grey hair for the elderly, small " +
-  "childlike stature and round face for a child). For unnamed side characters, state one explicit age and keep it " +
-  "consistent for the whole story.\n" +
-  "- TWO OR MORE PEOPLE IN FRAME (critical): name each person separately with their gender, their own EXACT age and " +
+  "- IDENTITY CONTINUITY: preserve age, gender and other identity details when they are explicitly supplied by the " +
+  "script or character sheet; when absent, leave them open rather than guessing.\n" +
+  "- TWO OR MORE PEOPLE IN FRAME (critical): name each person separately with their own " +
   "their own distinct traits, and say where each one stands. Never write 'two figures' or 'the two of them', and " +
   "never let one character's hair, clothing, age or body type bleed onto the other.\n" +
-  "- MIXED PAIRS (critical): when two people in one frame differ in age or gender, write the CONTRAST explicitly " +
-  "next to both of them — 'Ravi, a clearly MALE elderly man with deep wrinkles and white hair, beside Meena, a " +
-  "clearly FEMALE 8-year-old girl, small and round-faced'. Never make a young character look the same age as the " +
-  "older one beside them, never age a child up or an elder down to match the other person, and never draw a male " +
-  "character feminine (or a female one masculine) just because they share the frame with the opposite gender.\n" +
+  "- DISTINCT CAST (critical): when two people share a frame, preserve each person's explicitly supplied traits and " +
+  "make their silhouettes, hair, clothing and position clearly distinct without inventing demographic traits.\n" +
   "- HEAD COUNT: state explicitly how many people are in frame and that nobody else is present.\n" +
   "- FIGHTING & MAGIC (critical): these stories are action fantasy. Whenever the line contains combat, a technique, a " +
   "spell, an awakening, a transformation, a curse, an aura, a summon, a beast, a weapon clash or any supernatural " +
@@ -361,12 +320,15 @@ const PROMPT_SYSTEM =
   "EXPRESSION. Use clear silhouettes, foreshortening and a decisive peak-action instant. A punch, for example, must show " +
   "the torso twisting, rear foot driving, arm extending, fist prominent in foreground, target and impact point aligned, " +
   "and dust or debris reacting where appropriate rather than two characters standing near each other.\n" +
+  "- COMPLETE MANHWA STORYTELLING: compose every image like a finished vertical Korean webtoon episode panel, with " +
+  "confident cinematic crops, expressive acting, purposeful negative space for lettering, strong depth, and clean visual flow. " +
+  "Use wide establishing compositions, intimate close-ups, tall reveals, border-breaking action and quiet breathing space as the story requires.\n" +
   "- WEBTOON EFFECTS: select only effects that strengthen this exact beat. Action may use speed lines, impact bursts, " +
   "directional streaks, motion blur, debris, dust, shockwaves, exaggerated motion, energy or slash trails and impact " +
   "distortion. Emotion may use subtle background rays, tension lines, dramatic shadow, eye emphasis, atmospheric particles " +
   "and emotional accents. Power or fantasy may use established aura, energy particles, glow, magic circles, elemental " +
   "trails and environmental reaction. Do not write an SFX word yourself; the renderer adds one script-matched action SFX. " +
-  "Never describe narration boxes, captions, signs or unrelated lettering in the prompt body; spoken words go only in the DIALOGUE tail.\n" +
+  "Never describe lettering in the prompt body; spoken words and story narration go only in their dedicated tail fields.\n" +
   "- CAMERA & COMPOSITION: choose the camera specifically for the current story beat; never repeat one fixed shot type. " +
   "Use wide shots for geography and large-scale action, medium shots for interaction, close-ups for facial emotion, extreme " +
   "close-ups for intense reactions, low angles for power, high angles for vulnerability or scale, over-the-shoulder shots " +
@@ -388,7 +350,7 @@ const PROMPT_SYSTEM =
   "- CROWD LINES: if the line says many people, everyone, a crowd, an army, soldiers or people running, show that " +
   "crowd or force, made of unnamed people who are not the main cast.\n" +
   "- NO TEXT IN THE PROMPT BODY: never describe captions, letters, numbers, signs, posters, banners, newspapers, book " +
-  "pages, screens with writing, labels or logos. Spoken words belong ONLY in the DIALOGUE tail described below.\n" +
+  "pages, screens with writing, labels or logos. All story lettering belongs ONLY in DIALOGUE and NARRATION below.\n" +
   "- SHORT / NEARLY EMPTY LINES (critical): some lines are very short — a shout, a name, one word, a reaction, or a " +
   "silent beat with almost no words. Such a line has NO new setting of its own, so you MUST hold the SAME place, the " +
   "SAME people and the SAME time of day as the surrounding lines, and change only the camera or the person's acting. " +
@@ -397,8 +359,8 @@ const PROMPT_SYSTEM =
   "scene the script does not have. When such a line is marked with CONTEXT below, take its place and people from that " +
   "context verbatim.\n" +
   "- 65 to 95 words each — put the exact visible action, named cast and place in the FIRST sentence. Keep every word visual and load-bearing. English only. The image engine gives the beginning much more weight, so never open with mood, history or explanation.\n" +
-  "\nFRAMES + DIALOGUE TAIL (required on every prompt). After the prompt body, append this exact tail:\n" +
-  "|| FRAMES: n || BEATS: 1) ... ; 2) ... || DIALOGUE: 1) Name: spoken line ; 2) NONE\n" +
+  "\nFRAMES + LETTERING TAIL (required on every prompt). After the prompt body, append this exact tail:\n" +
+  "|| FRAMES: n || BEATS: 1) ... ; 2) ... || DIALOGUE: 1) Name: spoken line ; 2) NONE || NARRATION: 1) story text ; 2) NONE\n" +
   "- FRAMES is how many comic frames that ONE timestamp is drawn as, decided by BOTH its length (shown as [Xs-Ys]) and " +
   "how many real story beats its own text contains. Hard ceiling by length: under 5s = 1, 5-9s = 2, 9-15s = 3, over 15s " +
   "= 4. NEVER pad: if the line is one single moment, FRAMES is 1 however long the timestamp is. Only split when the " +
@@ -409,11 +371,16 @@ const PROMPT_SYSTEM =
   "name, a colon, then that speech translated into short natural spoken ENGLISH (max 12 words, no quotation marks, no " +
   "Hindi, no transliteration, keep the emotion — a shout stays a shout). If the script line is narration, description " +
   "or silence with no spoken words, write NONE for that frame. Never invent dialogue that the script does not speak.\n" +
+  "- NARRATION: exactly FRAMES entries. Preserve the remaining non-spoken story from this timestamp as concise, natural " +
+  "ENGLISH webtoon narration (max 20 words per box). Use NONE only when that frame is fully communicated by spoken dialogue " +
+  "or contains no narrative wording. Translate faithfully: do not discard exposition, inner narration, time/place transitions " +
+  "or story context, and do not turn spoken dialogue into narration. For multi-frame timestamps, divide the narration across " +
+  "the matching beats without repeating or padding it.\n" +
   "OUTPUT FORMAT (strict about the shape, nothing else): one plain line per requested script line, each starting with " +
   "that script line's own number, then ') ', then the whole prompt AND its tail on that same single line. Example:\n" +
-  "37) In the sunlit courtyard, Henan, a male 23-year-old young man ... || FRAMES: 1 || DIALOGUE: 1) Henan: Stay back!\n" +
+  "37) In the sunlit courtyard, Henan steps back ... || FRAMES: 1 || DIALOGUE: 1) Henan: Stay back! || NARRATION: 1) NONE\n" +
   "38) In the same courtyard, Henan turns ... || FRAMES: 2 || BEATS: 1) Henan turns towards the gate ; 2) he draws his " +
-  "blade in one sweep || DIALOGUE: 1) NONE ; 2) Henan: Who sent you?\n" +
+  "blade in one sweep || DIALOGUE: 1) NONE ; 2) Henan: Who sent you? || NARRATION: 1) At dusk, danger found him again. ; 2) NONE\n" +
   "No JSON, no quotes, no brackets, no bullets, no headings, no blank lines, and never break one prompt across lines.";
 
 /** Hard ceiling for one published text request; larger payloads can sit idle at the edge. */

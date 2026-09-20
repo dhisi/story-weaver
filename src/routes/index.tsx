@@ -143,7 +143,7 @@ function scriptKey(script: string): string {
   // Bump whenever prompt semantics change. Without this, IndexedDB restores old
   // bad prompts and images for the same script, making a quality fix appear to
   // have done nothing even after starting generation again.
-  return `manga:q4:${script.length}:${h}`;
+  return `manga:q5:${script.length}:${h}`;
 }
 
 type Saved = SavedRun<Shot>;
