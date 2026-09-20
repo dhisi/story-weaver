@@ -2334,7 +2334,7 @@ export function correctiveVariant(prompt: string, reason: string): string {
     bad_crop:
       "a deliberate cinematic composition preserving every story-essential feature; crop only when a close-up or extreme close-up serves the emotional beat",
     underage_lead:
-      "the main protagonist is unmistakably an adult 23-year-old unmarried young man, with mature adult facial proportions and adult height and build",
+      "preserve the protagonist's exact appearance and identity from the supplied character sheet without adding or changing demographic traits",
     wrong_scene: "exactly the location, cast and action described above and nothing else",
     text: "a completely wordless picture with no lettering anywhere",
   };
@@ -2398,9 +2398,10 @@ export async function renderPanel(
   const plan = parsePanelPlan(written, seconds);
   const prompt = plan.body;
   const rewritten = false;
-  if (plan.frames > 1 || plan.bubbles.some((b) => b.text))
+  if (plan.frames > 1 || plan.bubbles.some((b) => b.text) || plan.narration.some(Boolean))
     console.log(
       `[panels] ${plan.frames} frame(s), ${plan.bubbles.filter((b) => b.text).length} balloon(s)` +
+        `, ${plan.narration.filter(Boolean).length} narration box(es)` +
         `${seconds === undefined ? "" : ` for ${seconds.toFixed(1)}s (max ${frameCeiling(seconds)})`}`,
     );
 
