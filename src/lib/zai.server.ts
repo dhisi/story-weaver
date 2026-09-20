@@ -16,7 +16,7 @@ const API = "https://api.z.ai/api/paas/v4/chat/completions";
 
 /**
  * Free Z.ai text model. `glm-4.5-flash` is used exclusively: the reasoning
- * model `glm-4.5-flash` burns its budget on hidden thinking and returns
+ * reasoning model `glm-4.7-flash` burned its budget on hidden thinking and returned
  * degenerate answers (it echoes the input script instead of writing prompts).
  */
 export function modelChain(): string[] {
