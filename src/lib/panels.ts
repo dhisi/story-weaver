@@ -1,10 +1,10 @@
 /**
  * Panel layout + speech balloons.
  *
- * Two things the storyboard writer now decides per script line, appended to its
+ * Three things the storyboard writer now decides per script line, appended to its
  * picture prompt as a strict machine-readable tail:
  *
- *   ... prompt body ... || FRAMES: 2 || BEATS: 1) ... ; 2) ... || DIALOGUE: 1) Ravi: "Run!" ; 2) NONE
+ *   ... prompt body ... || FRAMES: 2 || BEATS: 1) ... ; 2) ... || DIALOGUE: 1) Ravi: "Run!" ; 2) NONE || NARRATION: 1) That night... ; 2) NONE
  *
  * FRAMES is how many comic frames that ONE timestamp is drawn as. It follows
  * the timestamp's own length and its own number of story beats, so a short
@@ -13,6 +13,10 @@
  * DIALOGUE is the spoken line translated into short, natural ENGLISH, which the
  * image model letters into a proper speech balloon. Lines with no speech get
  * NONE and stay wordless.
+ *
+ * NARRATION preserves the remaining story text as short, natural ENGLISH in a
+ * rectangular webtoon story box. It is separate from speech and never gains a
+ * balloon tail.
  *
  * The tail is parsed off before the prompt body is sanitised (the sanitiser
  * deliberately removes every mention of text and balloons from the body, since
@@ -35,6 +39,8 @@ export type PanelPlan = {
   beats: string[];
   /** One entry per frame; an empty text means that frame is silent. */
   bubbles: Bubble[];
+  /** One translated story-box caption per frame; empty means no narration. */
+  narration: string[];
 };
 
 export const MAX_FRAMES = 4;
@@ -77,6 +83,13 @@ function parseBubble(raw: string): Bubble {
   return { speaker, text: clipped.replace(/\s+/g, " ") };
 }
 
+function parseNarration(raw: string): string {
+  const value = raw.trim().replace(/^['“”]+|['“”]+$/g, "").trim();
+  if (!value || /^none$|^silent$|^-$/i.test(value)) return "";
+  const words = value.split(/\s+/);
+  return (words.length > 22 ? words.slice(0, 22).join(" ") : value).replace(/\s+/g, " ");
+}
+
 /**
  * Reads the writer's tail off a prompt, wherever it sits. The writer sometimes
  * drops the tail in the MIDDLE of the prompt (before the location lock), so each
@@ -90,11 +103,12 @@ export function parsePanelPlan(written: string, durationSeconds?: number): Panel
   let frames = 1;
   let beats: string[] = [];
   let bubbles: Bubble[] = [];
+  let narration: string[] = [];
   const leftovers: string[] = [];
 
   // "|| KEY: value" up to the next "||" or the end of the line.
   const body = written
-    .replace(/\|\|\s*(FRAMES|BEATS|DIALOGUE)\s*:\s*([^|]*)/gi, (_all, rawKey: string, rawValue: string) => {
+    .replace(/\|\|\s*(FRAMES|BEATS|DIALOGUE|NARRATION)\s*:\s*([^|]*)/gi, (_all, rawKey: string, rawValue: string) => {
       const key = rawKey.toUpperCase();
       let value = rawValue.trim();
       // A value never runs into the next instruction sentence: cut at the first
@@ -111,6 +125,8 @@ export function parsePanelPlan(written: string, durationSeconds?: number): Panel
         beats = splitList(value);
       } else if (key === "DIALOGUE") {
         bubbles = splitList(value).map(parseBubble);
+      } else if (key === "NARRATION") {
+        narration = splitList(value).map(parseNarration);
       }
       return " ";
     })
@@ -126,8 +142,9 @@ export function parsePanelPlan(written: string, durationSeconds?: number): Panel
   if (frames === 1) beats = [];
   else beats = beats.slice(0, frames);
   bubbles = bubbles.slice(0, frames);
+  narration = narration.slice(0, frames);
 
-  return { body, frames, beats, bubbles };
+  return { body, frames, beats, bubbles, narration };
 }
 
 
@@ -180,6 +197,14 @@ function balloonFor(b: Bubble, where: string): string {
   );
 }
 
+function storyBoxFor(text: string, where: string): string {
+  return (
+    `${where} place one clean solid black rectangular Korean webtoon narration box with a crisp white border, ` +
+    `generous inner spacing and no pointer tail, positioned over quiet negative space without covering a face or action, ` +
+    `containing ONLY this exact English story text, spelled exactly, in clear upright bold white comic lettering: "${text}"`
+  );
+}
+
 /**
  * The lettering and layout instruction, appended AFTER the sanitised picture
  * prompt so it survives untouched. Returns "" for a silent single frame, which
@@ -187,7 +212,8 @@ function balloonFor(b: Bubble, where: string): string {
  */
 export function panelDirective(plan: PanelPlan): string {
   const spoken = plan.bubbles.filter((b) => b.text.length > 0);
-  if (plan.frames <= 1 && spoken.length === 0) return "";
+  const narrated = plan.narration.filter((text) => text.length > 0);
+  if (plan.frames <= 1 && spoken.length === 0 && narrated.length === 0) return "";
 
   const out: string[] = [];
 
@@ -209,10 +235,18 @@ export function panelDirective(plan: PanelPlan): string {
     out.push(balloonFor(b, where));
   });
 
-  if (spoken.length > 0) {
+  plan.narration.forEach((text, i) => {
+    if (!text) return;
+    const where =
+      plan.frames > 1
+        ? `in the ${ORDINAL[i] ?? `frame ${i + 1}`} frame, near the top or bottom edge,`
+        : "near the top or bottom edge of the illustration,";
+    out.push(storyBoxFor(text, where));
+  });
+
+  if (spoken.length > 0 || narrated.length > 0) {
     out.push(
-      "the speech balloon text is the only readable writing in the image apart from an action SFX; " +
-        "no subtitles, no caption boxes, no watermark",
+      "the specified speech-balloon and narration-box text is the only readable writing in the image apart from a script-matched action SFX; no subtitles, signs or watermark",
     );
   }
 
