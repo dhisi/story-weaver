@@ -70,7 +70,7 @@ export const ANATOMY_GUARD =
   "anatomically correct bodies, one head, two arms and two legs per person, every figure a complete separate body with its own clothing, clearly spaced apart, never fused, merged, overlapping into one another or duplicated";
 
 /**
- * Every text call in the app goes through Z.ai GLM (glm-4.7-flash)
+ * Every text call in the app goes through Z.ai GLM (glm-4.5-flash)
  * (see zai.server.ts): one request at a time, with an automatic retry on
  * the next key when a daily free-model quota runs out. No other provider is
  * used anywhere in this app.

@@ -1,5 +1,5 @@
 /**
- * The ONLY text engine in this app: Z.ai GLM (glm-4.7-flash, free tier).
+ * The ONLY text engine in this app: Z.ai GLM (glm-4.5-flash, free tier).
  */
 
 import { zaiChat } from "./zai.server";
