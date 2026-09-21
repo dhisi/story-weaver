@@ -24,11 +24,10 @@ const IMAGE_REQUEST_TIMEOUT_MS = 1_800_000;
  * unwanted media such as photography or pencil sketches can make Flux draw them.
  */
 export const STYLE =
-  "FIXED VISUAL STYLE: one professional Korean webtoon/manhwa story panel in a single rectangular frame, " +
-  "crisp confident ink outlines, clean controlled linework, polished cel shading, selective hard shadows, " +
-  "strong light and shadow separation, rich controlled colours, expressive faces with detailed eyes and facial acting, " +
-  "dynamic anatomy, cinematic composition, strong foreground and background depth, dramatic perspective, " +
-  "clear visual storytelling, polished commercial webtoon finish, consistent character and environment design across the sequence";
+  "FIXED VISUAL STYLE: premium full-colour Korean action-fantasy webtoon/manhwa, crisp black contour lines over highly " +
+  "finished digital painting, controlled cel shading blended with luminous atmospheric rendering, cool blue-violet shadows, " +
+  "brilliant energy rim light, expressive detailed faces, dynamic anatomy, cinematic depth and foreshortening, dense speed lines, " +
+  "impact bursts, flying debris and glow integrated into the action, polished serialized-webtoon finish";
 
 
 
@@ -361,10 +360,10 @@ const PROMPT_SYSTEM =
   "- 65 to 95 words each — put the exact visible action, named cast and place in the FIRST sentence. Keep every word visual and load-bearing. English only. The image engine gives the beginning much more weight, so never open with mood, history or explanation.\n" +
   "\nFRAMES + LETTERING TAIL (required on every prompt). After the prompt body, append this exact tail:\n" +
   "|| FRAMES: n || BEATS: 1) ... ; 2) ... || DIALOGUE: 1) Name: spoken line ; 2) NONE || NARRATION: 1) story text ; 2) NONE\n" +
-  "- FRAMES is how many comic frames that ONE timestamp is drawn as, decided by BOTH its length (shown as [Xs-Ys]) and " +
-  "how many real story beats its own text contains. Hard ceiling by length: under 5s = 1, 5-9s = 2, 9-15s = 3, over 15s " +
-  "= 4. NEVER pad: if the line is one single moment, FRAMES is 1 however long the timestamp is. Only split when the " +
-  "line genuinely contains that many separate consecutive moments.\n" +
+  "- FRAMES is how many comic frames that ONE timestamp is drawn as. Hard ceiling by length: under 5s = 1, 5-9s = 2, " +
+  "9-15s = 3, over 15s = 4. Count the timestamp's separate sentences and consecutive visible actions. When a timestamp " +
+  "has two or more such story moments, FRAMES MUST be at least that count up to its duration ceiling; never collapse a " +
+  "multi-sentence timestamp to one frame. A genuinely single-moment timestamp stays one frame however long it lasts.\n" +
   "- BEATS: write one only when FRAMES is 2 or more — exactly FRAMES short phrases (4-12 words each), in story order, " +
   "each the visible action of that frame, all in the SAME place with the SAME characters. Omit BEATS when FRAMES is 1.\n" +
   "- DIALOGUE: exactly FRAMES entries. For a frame where someone SPEAKS or SHOUTS in the script line, give the speaker's " +
@@ -1831,7 +1830,7 @@ function clip(s: string, max: number): string {
  * without ever naming faces or eyes as things to draw.
  */
 const STYLE_LEAD =
-  "professional Korean webtoon/manhwa story panel showing";
+  "premium full-colour Korean action-fantasy webtoon/manhwa artwork showing";
 
 
 
@@ -1847,10 +1846,11 @@ const STYLE_LEAD =
  * being used for.
  */
 const STYLE_TAIL =
-  "professional 2D Korean webtoon artwork, crisp confident ink outlines, clean controlled linework, polished cel shading, " +
-  "selective hard shadows, strong light and shadow separation, rich controlled colours, expressive faces, detailed eyes " +
-  "and facial acting, dynamic anatomy, cinematic composition, strong foreground and background depth, dramatic perspective, " +
-  "clear visual storytelling, polished commercial webtoon finish, consistent character design and consistent environment design across the sequence";
+  "premium full-colour Korean action-fantasy webtoon artwork, crisp black contour lines over meticulously finished digital " +
+  "painting, controlled cel shading blended with luminous atmospheric rendering, cool blue-violet shadow depth, brilliant " +
+  "story-led rim light and energy glow, expressive detailed faces, dynamic anatomy, cinematic depth and aggressive foreshortening, " +
+  "dense directional speed lines, impact bursts, flying debris and environmental reaction, polished serialized-webtoon finish, " +
+  "consistent character and environment design across the sequence";
 
 
 
@@ -1927,14 +1927,15 @@ const FRAMING_RULE =
   "close-up, over-the-shoulder, low angle, high angle, side angle, Dutch angle or dramatic perspective as appropriate to the action and emotion";
 
 const WEBTOON_EFFECTS =
-  "use story-appropriate wordless webtoon effects: speed lines, impact bursts, directional streaks, motion blur, dust, debris, " +
-  "shockwaves, energy or slash trails, dramatic shadows, eye emphasis, atmospheric particles, aura, glow or environmental reaction";
+  "use story-appropriate high-energy Korean webtoon effects: dense speed lines converging on the action, explosive impact bursts, " +
+  "layered motion streaks, dust, airborne rubble, shockwaves, luminous energy or slash trails, dramatic shadows, eye emphasis, " +
+  "atmospheric particles and visible environmental reaction, integrated with the drawing rather than added as decoration";
 
 const ACTION_BEAT =
   /\b(attack(?:s|ed|ing)?|fight(?:s|ing)?|battle|combat|punch(?:es|ed|ing)?|kick(?:s|ed|ing)?|strike(?:s|uck|iking)?|slash(?:es|ed|ing)?|stab(?:s|bed|bing)?|shoot(?:s|ing)?|fire[sd]?|charge(?:s|d|ing)?|rush(?:es|ed|ing)?|run(?:s|ning)?|sprint(?:s|ed|ing)?|chase(?:s|d|ing)?|jump(?:s|ed|ing)?|leap(?:s|t|ed|ing)?|dodge(?:s|d|ing)?|fall(?:s|ing)?|fell|throw(?:s|ing)?|threw|smash(?:es|ed|ing)?|crash(?:es|ed|ing)?|collid(?:e|es|ed|ing)|impact|explod(?:e|es|ed|ing)|blast(?:s|ed|ing)?|transform(?:s|ed|ing|ation)?|awaken(?:s|ed|ing)?|spell|magic|aura|energy|lightning|flames?|shockwave|weapon|sword|blade|arrow|bullet|monster|demon|beast|war|army|running|flying|escaping|struggling|grabbing|pushing|pulling)\b|(?:टक्कर|हमला|लड़ाई|दौड़|भाग|कूद|मुक्का|लात|तलवार|गोली|जादू|शक्ति)/i;
 
 const ACTION_DIRECTION =
-  "ACTION PANEL — freeze the decisive peak-motion instant, not a standing pose: show a clear movement path, forceful body rotation and weight transfer, strong foreshortening or a dynamic tilted camera, foreground-to-background depth, and a clearly readable impact or destination; add at least three fitting visual effects such as dense directional speed lines, layered motion trails, an impact burst or shockwave, flying dust and debris, displaced clothing or hair, energy or slash trails, and visible environmental reaction; expressions and gaze must show effort, speed, danger and impact";
+  "ACTION PANEL — stage a premium Korean action-webtoon climax, freezing the decisive peak-motion instant rather than a standing pose: show a clear movement path, forceful body rotation and weight transfer, aggressive foreshortening or a tilted camera, deep foreground-to-background scale and a readable impact or destination; layer dense directional speed lines, motion trails, a radiant impact burst or shockwave, flying dust and fractured debris, displaced clothing and hair, luminous energy or slash trails, and visible environmental reaction; let the subject, aura or debris break the frame edge while expressions and gaze communicate effort, speed, danger and impact";
 
 function actionSfx(prompt: string, line?: string): string {
   const beat = `${line ?? ""} ${prompt}`;
@@ -2395,7 +2396,7 @@ export async function renderPanel(
   const span = /(-?\d+(?:\.\d+)?)s?\s*-\s*(-?\d+(?:\.\d+)?)s?/.exec(timestamp ?? "");
   const seconds =
     duration ?? (span ? Math.max(0, Number(span[2]) - Number(span[1])) : undefined);
-  const plan = parsePanelPlan(written, seconds);
+  const plan = parsePanelPlan(written, seconds, line);
   const prompt = plan.body;
   const rewritten = false;
   if (plan.frames > 1 || plan.bubbles.some((b) => b.text) || plan.narration.some(Boolean))

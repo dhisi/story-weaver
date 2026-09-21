@@ -46,9 +46,8 @@ export type PanelPlan = {
 export const MAX_FRAMES = 4;
 
 /**
- * Frame budget from the timestamp's own duration. This is a CEILING, never a
- * target: the writer may always ask for fewer, and a timestamp with one beat
- * stays one frame however long it is.
+ * Frame budget from the timestamp's own duration. Short timestamps are always
+ * one frame; longer timestamps may use progressively richer page structures.
  */
 export function frameCeiling(durationSeconds: number): number {
   const d = Number.isFinite(durationSeconds) ? durationSeconds : 0;
@@ -56,6 +55,28 @@ export function frameCeiling(durationSeconds: number): number {
   if (d < 9) return 2;
   if (d < 15) return 3;
   return MAX_FRAMES;
+}
+
+function storyBeats(source: string): string[] {
+  const clean = source.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  const sentences = clean
+    .split(/(?<=[.!?।])\s+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 2);
+  if (sentences.length > 1) return sentences;
+  return clean
+    .split(/\s+(?:and then|then|after that|suddenly|but then|फिर|तभी|इसके बाद|और फिर)\s+/i)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 2);
+}
+
+function visualBeatFallback(body: string): string[] {
+  const clauses = body
+    .split(/(?<=[.!?])\s+|;\s+|,\s+(?=(?:then|before|after|while|as|and)\b)/i)
+    .map((part) => part.trim().replace(/[.;,]+$/, ""))
+    .filter((part) => part.length > 8);
+  return clauses.length > 0 ? clauses : [body];
 }
 
 const SPLIT = /\|\|/;
@@ -99,7 +120,11 @@ function parseNarration(raw: string): string {
  * A prompt without a tail (older cached prompts, repairs, manual edits) is simply
  * a silent single frame — exactly how this app behaved before.
  */
-export function parsePanelPlan(written: string, durationSeconds?: number): PanelPlan {
+export function parsePanelPlan(
+  written: string,
+  durationSeconds?: number,
+  sourceText?: string,
+): PanelPlan {
   let frames = 1;
   let beats: string[] = [];
   let bubbles: Bubble[] = [];
@@ -134,13 +159,23 @@ export function parsePanelPlan(written: string, durationSeconds?: number): Panel
     .replace(/\s{2,}/g, " ")
     .trim();
 
-  // Never pad: the frame count is the smallest of what the writer asked for,
-  // what the duration allows, and how many beats it actually described.
+  // A long timestamp with several written story moments must remain a
+  // multi-frame page even when the free storyboard model mistakenly says 1.
+  // A genuinely single-moment timestamp remains one frame at every duration.
   const ceiling = durationSeconds === undefined ? MAX_FRAMES : frameCeiling(durationSeconds);
-  frames = Math.max(1, Math.min(frames, ceiling, MAX_FRAMES));
-  if (beats.length > 0) frames = Math.min(frames, beats.length);
+  const sourceMoments = storyBeats(sourceText ?? "");
+  const required = sourceMoments.length > 1 ? Math.min(ceiling, sourceMoments.length) : 1;
+  frames = Math.max(required, Math.min(frames, ceiling, MAX_FRAMES));
+  frames = Math.min(frames, ceiling, MAX_FRAMES);
   if (frames === 1) beats = [];
-  else beats = beats.slice(0, frames);
+  else {
+    const fallback = visualBeatFallback(body);
+    while (beats.length < frames) {
+      const next = fallback[beats.length] ?? fallback[fallback.length - 1];
+      beats.push(next ?? `the next consecutive moment of the same action`);
+    }
+    beats = beats.slice(0, frames);
+  }
   bubbles = bubbles.slice(0, frames);
   narration = narration.slice(0, frames);
 
@@ -167,19 +202,19 @@ function hash(text: string): number {
  */
 const LAYOUTS: Record<number, string[]> = {
   2: [
-    "a dramatic manhwa page layout of exactly 2 frames: a narrow full-width letterbox frame across the top and one huge tall frame filling the rest below it, both slightly tilted with a jagged diagonal white gutter between them, the lower frame's action breaking over its border",
-    "a dynamic manhwa page layout of exactly 2 frames split by one steep diagonal white gutter running corner to corner, the upper-left frame smaller and the lower-right frame dominant and full-bleed, borders angled and irregular",
-    "a bold manhwa page layout of exactly 2 frames: one enormous full-bleed frame filling the page, with a smaller tilted inset frame overlapping its lower-left corner inside a thick white border",
+    "exactly 2 unequal cinematic horizontal frames: a shallow letterbox establishing strip above one huge dominant action frame, separated by a thick white diagonal gutter with crisp black edge lines; the lower action and energy break beyond its border into the gutter",
+    "exactly 2 unequal frames divided by one steep white diagonal gutter: a compact upper reaction frame and a dominant lower impact frame occupying most of the canvas, with foreground debris and energy crossing the lower border",
+    "exactly 2 frames: one large full-width action frame with a narrow tilted close-up strip cutting across its top edge, thick clean white gutter, strong top-to-bottom reading flow and a border-breaking subject",
   ],
   3: [
-    "a dramatic manhwa page layout of exactly 3 frames: a wide thin letterbox frame across the top, a tall tilted frame below it on the left, and a bigger dominant frame on the right bleeding off the page edge, all separated by irregular angled white gutters",
-    "a dynamic manhwa page layout of exactly 3 frames stacked as uneven horizontal bands of different heights, each band slanted at a slightly different angle with jagged white gutters, the middle band the widest and most dominant, action breaking across the gutters",
-    "a bold manhwa page layout of exactly 3 frames: two small stacked frames down the left side and one towering full-height frame on the right taking two thirds of the page, tilted borders, thick uneven white gutters, one character breaking out of a frame edge",
+    "exactly 3 unequal horizontal webtoon frames stacked vertically: a shallow wide establishing strip, a larger full-width power-up frame, then a huge tilted climax frame occupying nearly half the canvas; bold black frame edges, thick white diagonal gutters, effects breaking across the final border",
+    "exactly 3 staggered horizontal bands of clearly different heights: narrow reaction, broad action, dominant impact; each boundary slants in a different direction, leaving clean white gutters while speed lines and debris bridge the action panels",
+    "exactly 3 frames with a slim panoramic top strip, a medium diagonal middle strip and an oversized bottom splash frame; maintain an effortless vertical reading path, deep cinematic crops and one subject breaking the final frame edge",
   ],
   4: [
-    "a dramatic manhwa page layout of exactly 4 frames of clearly different sizes: a thin wide establishing frame on top, two small tilted frames side by side in the middle, and one huge dominant climax frame across the bottom bleeding off the edges, all with angled irregular white gutters",
-    "a dynamic manhwa page layout of exactly 4 frames arranged around one big central diagonal frame: three narrow slanted frames tucked along the top and left, the central frame dominant and full-bleed with art breaking over its borders, jagged white gutters",
-    "a bold asymmetric manhwa page layout of exactly 4 frames of unequal size and angle, staggered like shattered glass with steep diagonal white gutters, one frame at least twice the size of the others, effects and debris crossing between frames",
+    "exactly 4 unequal frames in a vertical action rhythm: a thin panoramic setup strip, two compact angled progression frames, then one enormous bottom climax frame; thick white gutters, black edge lines, diagonal cuts and effects crossing only into the gutters",
+    "exactly 4 staggered cinematic bands wrapped around one dominant diagonal action frame, with three smaller reaction and detail strips; strong vertical reading order, broad white gutters and a border-breaking focal figure",
+    "exactly 4 asymmetric frames of dramatically unequal scale: two narrow setup strips, one medium escalation frame and one huge impact splash; steep diagonal white gutters, bold black edges, flying debris and energy extending beyond the climax border",
   ],
 };
 
@@ -221,7 +256,9 @@ export function panelDirective(plan: PanelPlan): string {
     out.push(
       `render this as ONE manhwa comic page in ${layoutOf(plan.frames, plan.body)}, every frame in the same art ` +
         `style with the same characters and the same location, showing consecutive moments of this one scene, ` +
-        `cinematic varied camera distance per frame, no equal boxy grid and no repeated identical frame shape`,
+        `cinematic varied camera distance per frame, clear top-to-bottom reading order, dramatic size contrast, ` +
+        `clean white page gutters and bold black frame edges; use a narrow establishing view, a closer escalation view, ` +
+        `and the largest space for the decisive action as applicable`,
     );
     plan.beats.forEach((beat, i) => {
       out.push(`the ${ORDINAL[i] ?? `frame ${i + 1}`} frame shows ${beat.replace(/\.$/, "")}`);
