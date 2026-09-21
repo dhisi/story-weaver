@@ -1132,12 +1132,18 @@ function Index() {
 
       record(shot.index, { prompt, status: "drawing", error: undefined });
       // A repair or reroll must ask for something DIFFERENT from what came
-      // back, otherwise the same faulty composition is drawn again. Fix scene
-      // re-states the exact moment, true scale and one-scene rule; reroll keeps
-      // the scene facts but asks for a fresh single-scene composition.
+      // back, otherwise the same faulty composition is drawn again. Preserve a
+      // storyboard's requested frame count: appending "single illustration"
+      // here used to collapse a valid long-timestamp page during every reroll.
+      const frameMatch = /\|\|\s*FRAMES\s*:\s*(\d+)/i.exec(prompt);
+      const frameCount = Math.max(1, Math.min(4, Number(frameMatch?.[1] ?? 1)));
+      const composition =
+        frameCount > 1
+          ? `one creative Korean webtoon page of exactly ${frameCount} unequal cinematic frames with diagonal white gutters, a dominant climax frame and border-breaking action`
+          : "one single continuous illustration filling the whole image from one camera";
       const correction = freshPrompt
-        ? ` Draw exactly the moment at ${shot.start}s: one single continuous illustration filling the whole image, one camera, everything at its full real-world size with people as size references.`
-        : ` Redraw as one single continuous illustration filling the whole image from one camera, with a fresh composition and viewing angle, everything at its full real-world size.`;
+        ? ` Draw exactly the moment at ${shot.start}s as ${composition}, everything at its full real-world size with people as size references.`
+        : ` Redraw as ${composition}, with a fresh composition and viewing angles, everything at its full real-world size.`;
       const drawPrompt = `${prompt}${correction}`;
       let last = "render failed";
       for (let attempt = 0; attempt < 3; attempt++) {
